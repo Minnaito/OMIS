@@ -1,132 +1,99 @@
-"""Доменные классы — соответствуют диаграмме классов (рис. 6)."""
-from dataclasses import dataclass
-from typing import Optional
+from abc import ABC, abstractmethod
+from datetime import date
+from interfaces import IExecutiveDevice
 
+class CardHolder(ABC):
+    def __init__(self, id: int, fullName: str, gender: str = 'male', photoPath: str = ''):
+        self.id = id
+        self.fullName = fullName
+        self.gender = gender
+        self.photoPath = photoPath
 
-@dataclass
-class Department:
-    id: Optional[int] = None
-    name: str = ""
+    @abstractmethod
+    def getTitle(self) -> str: pass
 
-
-@dataclass
-class WorkSchedule:
-    id: Optional[int] = None
-    name: str = ""
-    start_time: str = ""
-    end_time: str = ""
-
-
-@dataclass
-class Zone:
-    id: Optional[int] = None
-    name: str = ""
-    description: str = ""
-
-
-@dataclass
-class AccessLevel:
-    id: Optional[int] = None
-    name: str = ""
-    description: str = ""
-
-
-@dataclass
-class Device:
-    """«Устройство» из ER-диаграммы (рис. 1)."""
-    id: Optional[int] = None
-    type: str = ""
-
-
-@dataclass
-class AccessPoint:
-    id: Optional[int] = None
-    name: str = ""
-    type: str = ""
-    zone_id: Optional[int] = None
-    device_id: Optional[int] = None
-
-
-@dataclass
-class CardHolder:
-    id: Optional[int] = None
-    full_name: str = ""
-
-
-@dataclass
 class Employee(CardHolder):
-    personnel_number: str = ""
-    position: str = ""
-    phone: str = ""
-    email: str = ""
-    department_id: Optional[int] = None
-    schedule_id: Optional[int] = None
+    def __init__(self, id: int, fullName: str, personnelNumber: str, position: str, gender: str = 'male', photoPath: str = ''):
+        super().__init__(id, fullName, gender, photoPath)
+        self.personnelNumber = personnelNumber
+        self.position = position
 
+    def getTitle(self) -> str:
+        return f"{self.fullName} ({self.position})"
 
-@dataclass
 class Visitor(CardHolder):
-    document: str = ""
-    purpose: str = ""
+    def __init__(self, id: int, fullName: str, purpose: str, hostName: str, document: str = ''):
+        super().__init__(id, fullName, 'male', '')
+        self.purpose = purpose
+        self.hostName = hostName
+        self.document = document
 
+    def getTitle(self) -> str:
+        return f"Посетитель: {self.fullName}"
 
-@dataclass
+class Department:
+    def __init__(self, name: str):
+        self.name = name
+
 class AccessPass:
-    id: Optional[int] = None
-    card_number: str = ""
-    holder_type: str = ""
-    holder_id: Optional[int] = None
-    type: str = ""
-    active: bool = True
-    valid_from: str = ""
-    valid_to: str = ""
-    access_level_id: Optional[int] = None
-    level_name: str = ""
+    def __init__(self, cardNumber: str, type: str, active: bool, validUntil: str, level_id: int = 1, holder_id: int = None):
+        self.cardNumber = cardNumber
+        self.type = type
+        self.active = bool(active)
+        self.validUntil = validUntil
+        self.level_id = level_id
+        self.holder_id = holder_id
 
+    def isValid(self, d: date) -> bool:
+        return self.active
 
-@dataclass
+    def block(self):
+        self.active = False
+
+class AccessLevel:
+    def __init__(self, name: str, timeFrom: str, timeTo: str, days: str = 'пн вт ср чт пт'):
+        self.name = name
+        self.timeFrom = timeFrom
+        self.timeTo = timeTo
+        self.days = days
+
+    def allows(self, point: str, t: str) -> bool:
+        return True
+
+class Zone:
+    def __init__(self, name: str, level: int):
+        self.name = name
+        self.level = level
+
+class AccessPoint:
+    def __init__(self, id: str, name: str, direction: str):
+        self.id = id
+        self.name = name
+        self.direction = direction
+
+class ExecutiveDevice(IExecutiveDevice, ABC):
+    def __init__(self, id: str, opened: bool = False):
+        self.id = id
+        self.opened = opened
+
+class Turnstile(ExecutiveDevice):
+    def open(self): self.opened = True
+    def close(self): self.opened = False
+
+class MagneticLock(ExecutiveDevice):
+    def open(self): self.opened = True
+    def close(self): self.opened = False
+
 class AccessEvent:
-    """Событие прохода — слабая сущность на «Точка доступа» (ER, рис. 1)."""
-    id: Optional[int] = None
-    point_id: Optional[int] = None
-    pass_id: Optional[int] = None
-    card_number: str = ""
-    timestamp: str = ""
-    event_type: str = ""
-    result: str = ""
+    def __init__(self, time: str, result: str, cardNumber: str = "", pointId: str = "", eventType: str = "Проход", description: str = ""):
+        self.time = time
+        self.result = result
+        self.cardNumber = cardNumber
+        self.pointId = pointId
+        self.eventType = eventType
+        self.description = description
 
-
-@dataclass
-class TimesheetRecord:
-    """Запись табеля — слабая сущность на «Сотрудник» (ER, рис. 1)."""
-    id: Optional[int] = None
-    employee_id: Optional[int] = None
-    date: str = ""
-    check_in: Optional[str] = None
-    check_out: Optional[str] = None
-
-
-@dataclass
-class Incident:
-    id: Optional[int] = None
-    timestamp: str = ""
-    point_id: Optional[int] = None
-    description: str = ""
-    status: str = "новый"
-
-
-@dataclass
-class Visit:
-    """«Посещение» из ER (рис. 1) — M:N между Visitor и AccessPoint."""
-    id: Optional[int] = None
-    visitor_id: Optional[int] = None
-    point_id: Optional[int] = None
-    entry_time: str = ""
-
-
-@dataclass
-class Operator:
-    id: Optional[int] = None
-    login: str = ""
-    password: str = ""
-    role: str = ""
-    full_name: str = ""
+class User:
+    def __init__(self, login: str, full_name: str):
+        self.login = login
+        self.full_name = full_name
